@@ -27,4 +27,7 @@
     <string name="kilobytespersecond_short" translatable="false">kB/s</string>
     <string name="megabytespersecond_short" translatable="false">MB/s</string>
     <string name="gigabytespersecond_short" translatable="false">GB/s</string>
+
+    <!-- Face unlock -->
+    <string name="face_unlock_recognizing">Recognizing face...</string>
 </resources>
