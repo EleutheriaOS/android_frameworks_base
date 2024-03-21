@@ -1262,7 +1262,9 @@ public class UsbDeviceManager implements ActivityTaskManagerInternal.ScreenObser
                     UsbPortStatus status = (UsbPortStatus) args.arg2;
 // QTI_BEGIN: 2020-05-15: Core: Fix null pointer exception if USBPort is removed
 
-                    if (status != null) {
+                    final boolean isDataForcedOff = status != null && status.getUsbDataStatus()
+                            == UsbPortStatus.DATA_STATUS_DISABLED_FORCE;
+                    if (status != null && !isDataForcedOff) {
                         mHostConnected = status.getCurrentDataRole() == DATA_ROLE_HOST;
                         mSourcePower = status.getCurrentPowerRole() == POWER_ROLE_SOURCE;
                         mSinkPower = status.getCurrentPowerRole() == POWER_ROLE_SINK;
@@ -1297,6 +1299,12 @@ public class UsbDeviceManager implements ActivityTaskManagerInternal.ScreenObser
                     }
 
 // QTI_END: 2020-05-15: Core: Fix null pointer exception if USBPort is removed
+                    if (isDataForcedOff) {
+                        mConnected = false;
+                        setEnabledFunctions(UsbManager.FUNCTION_NONE, false,
+                                /* operationId */ sUsbOperationCount.incrementAndGet());
+                    }
+
                     if (mHostConnected) {
                         if (!mUsbAccessoryConnected) {
                             mInHostModeWithNoAccessoryConnected = true;
@@ -1315,7 +1323,7 @@ public class UsbDeviceManager implements ActivityTaskManagerInternal.ScreenObser
                     args.recycle();
                     updateUsbNotification(false);
                     if (mBootCompleted) {
-                        if (mHostConnected || prevHostConnected) {
+                        if (mHostConnected || prevHostConnected || isDataForcedOff) {
                             updateUsbStateBroadcastIfNeeded(getAppliedFunctions(mCurrentFunctions));
                         }
                     } else {
