@@ -203,7 +203,7 @@ fun Tile(
                     }
                 },
                 onLongClick = longClick,
-                accessibilityUiState = uiState.accessibilityUiState,
+                uiState = uiState,
                 iconOnly = iconOnly,
             ) {
                 val iconProvider: Context.() -> Icon = { getTileIcon(icon = icon) }
@@ -217,9 +217,7 @@ fun Tile(
                     val iconShape = RoundedCornerShape(TileCornerRadius)
                     val secondaryClick: (() -> Unit)? =
                         {
-                                hapticsViewModel?.setTileInteractionState(
-                                    TileHapticsViewModel.TileInteractionState.CLICKED
-                                )
+                                vibrator.vibrate(EFFECT_CLICK)
                                 tile.onSecondaryClick()
                             }
                             .takeIf { uiState.handlesSecondaryClick }
@@ -264,7 +262,7 @@ private fun TileExpandable(
 fun TileContainer(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
-    accessibilityUiState: AccessibilityUiState,
+    uiState: TileUiState,
     iconOnly: Boolean,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -275,11 +273,11 @@ fun TileContainer(
                 .tileCombinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    accessibilityUiState = accessibilityUiState,
+                    accessibilityUiState = uiState.accessibilityUiState,
                     iconOnly = iconOnly,
                 )
                 .sysuiResTag(if (iconOnly) TEST_TAG_SMALL else TEST_TAG_LARGE)
-                .thenIf(!iconOnly) { Modifier.largeTilePadding() }, // Icon tiles are center aligned
+                .thenIf(!iconOnly) { Modifier.largeTilePadding(uiState) }, // Icon tiles are center aligned
         content = content,
     )
 }
@@ -297,7 +295,7 @@ fun LargeStaticTile(
             .clip(RoundedCornerShape(TileCornerRadius))
             .background(colors.background)
             .height(TileHeight)
-            .largeTilePadding()
+            .largeTilePadding(uiState)
     ) {
         LargeTileContent(
             label = uiState.label,
@@ -325,7 +323,17 @@ fun tileHorizontalArrangement(): Arrangement.Horizontal {
 }
 
 fun Modifier.largeTilePadding(): Modifier {
-    return padding(start = TileStartPadding, end = TileEndPadding)
+    return padding(start = TileStartPadding + CommonTileDefaults.TileArrangementPadding, end = TileEndPadding)
+}
+
+fun Modifier.largeTilePadding(uiState: TileUiState): Modifier {
+    return this.then(
+        if (!uiState.handlesSecondaryClick) {
+            padding(start = TileStartPadding + CommonTileDefaults.TileArrangementPadding, end = TileEndPadding)
+        } else {
+            padding(start = TileStartPadding, end = TileEndPadding)
+        }
+    )
 }
 
 @Composable
@@ -439,7 +447,7 @@ private object TileDefaults {
     fun getColorForState(uiState: TileUiState, iconOnly: Boolean): TileColors {
         return when (uiState.state) {
             STATE_ACTIVE -> {
-                if (!iconOnly) {
+                if (uiState.handlesSecondaryClick && !iconOnly) {
                     activeDualTargetTileColors()
                 } else {
                     activeIconTileColors()
